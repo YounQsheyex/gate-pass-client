@@ -19,7 +19,7 @@ export function CoverImageField({ value, onChange }: { value: string; onChange: 
 
   async function upload(file: File) {
     setError(null);
-    if (file.size > 5 * 1024 * 1024) return setError("That image is over 5 MB. Choose a smaller one.");
+    if (file.size > 4 * 1024 * 1024) return setError("That image is over 4 MB. Choose a smaller one, or compress it first.");
     setUploading(true);
     try {
       const body = new FormData();
@@ -80,7 +80,7 @@ export function CoverImageField({ value, onChange }: { value: string; onChange: 
           </Button>
         )}
       </div>
-      <span className="text-sm text-muted">JPG, PNG, WebP or GIF, up to 5 MB. A wide image (16:9) looks best.</span>
+      <span className="text-sm text-muted">JPG, PNG, WebP or GIF, up to 4 MB. A wide image (16:9) looks best.</span>
 
       {showLink && (
         <Input
