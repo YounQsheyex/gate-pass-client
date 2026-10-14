@@ -1,0 +1,75 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import { SITE_NAME } from "@/lib/config";
+import { SessionGate, useSession } from "./session";
+
+export function AdminShell({ children }: { children: ReactNode }) {
+  return (
+    <SessionGate>
+      <Nav />
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
+    </SessionGate>
+  );
+}
+
+function Nav() {
+  const { user, signOut } = useSession();
+  const pathname = usePathname();
+  const links =
+    user.role === "admin"
+      ? [
+          { href: "/admin", label: "Orders" },
+          { href: "/admin/events", label: "Events" },
+          { href: "/admin/scan", label: "Scan tickets" },
+          { href: "/admin/users", label: "Team" },
+        ]
+      : [{ href: "/admin/scan", label: "Scan tickets" }];
+
+  const isActive = (href: string) =>
+    href === "/admin" ? pathname === "/admin" || pathname.startsWith("/admin/orders") : pathname.startsWith(href);
+
+  return (
+    <header className="bg-ink text-white">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
+        <Link href="/admin" className="font-display text-lg font-extrabold">
+          {SITE_NAME} admin
+        </Link>
+        <nav className="order-last flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto">
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold ${
+                isActive(l.href) ? "bg-white text-ink" : "text-white/80 hover:text-white"
+              }`}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="ml-auto flex items-center gap-3 text-sm">
+          <span className="hidden text-white/70 sm:inline">{user.name}</span>
+          <button onClick={signOut} className="font-semibold text-white/90 hover:text-white">
+            Sign out
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/** Renders children only for admins; staff see a short note instead. */
+export function AdminOnly({ children }: { children: ReactNode }) {
+  const { user } = useSession();
+  if (user.role !== "admin") {
+    return (
+      <p className="text-ink-soft">
+        This page is for admins. <Link href="/admin/scan" className="font-semibold text-accent">Go to the scanner</Link>.
+      </p>
+    );
+  }
+  return <>{children}</>;
+}
