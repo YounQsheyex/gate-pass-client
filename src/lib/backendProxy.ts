@@ -29,6 +29,32 @@ function clientIp(req: NextRequest): string | null {
   return req.headers.get("x-real-ip") || fwd || null;
 }
 
+/**
+ * Open /api/_status on the live site to check the setup: it shows which backend this site
+ * forwards to and whether that backend answers. A 404 or 405 there means the deployed site
+ * is an older build without the forwarding routes.
+ */
+export async function proxyStatus() {
+  const source = process.env.API_URL
+    ? "API_URL"
+    : process.env.API_URL_INTERNAL
+      ? "API_URL_INTERNAL"
+      : process.env.NEXT_PUBLIC_API_URL
+        ? "NEXT_PUBLIC_API_URL"
+        : "not set (using http://localhost:4000)";
+  let backend: string;
+  try {
+    const res = await fetch(`${BACKEND_URL}/health`, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
+    backend = res.ok ? "reachable" : `answered with HTTP ${res.status}`;
+  } catch (err) {
+    backend = `not reachable (${err instanceof Error ? err.message : "error"})`;
+  }
+  return Response.json(
+    { forwarding: true, backendUrl: BACKEND_URL, setFrom: source, backend, proxySecretSet: Boolean(process.env.PROXY_SECRET) },
+    { headers: { "cache-control": "no-store" } },
+  );
+}
+
 export async function proxyToBackend(req: NextRequest, prefix: "/api" | "/uploads", path: string[]) {
   const target = `${BACKEND_URL}${prefix}/${path.map(encodeURIComponent).join("/")}${req.nextUrl.search}`;
 

@@ -7,12 +7,22 @@ export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "Gatepass";
  *
  * API_URL is preferred; NEXT_PUBLIC_API_URL / API_URL_INTERNAL still work for older setups.
  */
-export const BACKEND_URL = (
-  process.env.API_URL ??
-  process.env.API_URL_INTERNAL ??
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:4000"
-).replace(/\/+$/, "");
+export const BACKEND_URL = normalizeBackendUrl(
+  process.env.API_URL || process.env.API_URL_INTERNAL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
+);
+
+/**
+ * Forgives the usual slips when pasting the backend address: a missing https://, http:// for a
+ * hosted API (Render redirects it to https, which turns a login POST into a GET), and a
+ * trailing slash or /api.
+ */
+function normalizeBackendUrl(raw: string): string {
+  let url = raw.trim().replace(/\/+$/, "").replace(/\/api$/i, "");
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  const local = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\]|[\w-]+)(:\d+)?$/i.test(url); // localhost or a docker service name
+  if (!local) url = url.replace(/^http:\/\//i, "https://");
+  return url;
+}
 
 /** Used from the browser: same origin, so requests go through this site's /api proxy. */
 export const PUBLIC_API_URL = "";
