@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminHref } from "./AdminBase";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -11,6 +12,7 @@ import { StatusBadge } from "./StatusBadge";
 import { TicketPdfViewer } from "./TicketPdfViewer";
 
 export function OrderDetail() {
+  const href = useAdminHref();
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = useState<AdminOrderDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +78,7 @@ export function OrderDetail() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <Link href="/admin" className="text-sm font-semibold text-accent hover:underline">
+        <Link href={href()} className="text-sm font-semibold text-accent hover:underline">
           All orders
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">

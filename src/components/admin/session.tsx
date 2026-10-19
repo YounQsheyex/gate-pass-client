@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { usePathname, useRouter } from "next/navigation";
 import { api, ApiError, post } from "@/lib/api";
 import type { SessionUser } from "@/lib/types";
+import { useAdminBase } from "./AdminBase";
 
 const SessionContext = createContext<{ user: SessionUser; signOut: () => Promise<void> } | null>(null);
 
@@ -17,6 +18,7 @@ export function useSession() {
 export function SessionGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const base = useAdminBase();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,16 +27,16 @@ export function SessionGate({ children }: { children: ReactNode }) {
       .then(({ user }) => setUser(user))
       .catch((err) => {
         if (err instanceof ApiError && err.status === 401) {
-          router.replace(`/admin/login?next=${encodeURIComponent(pathname)}`);
+          router.replace(`${base}/login?next=${encodeURIComponent(window.location.pathname)}`);
         } else {
           setError(err instanceof Error ? err.message : "Couldn't check your session.");
         }
       });
-  }, [router, pathname]);
+  }, [router, pathname, base]);
 
   async function signOut() {
     await post("/api/auth/logout").catch(() => {});
-    router.replace("/admin/login");
+    router.replace(`${base}/login`);
   }
 
   if (error) return <p className="p-8 text-bad">{error}</p>;

@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { SITE_NAME } from "@/lib/config";
 import { SessionGate, useSession } from "./session";
+import { useAdminHref, useAdminSubpath } from "./AdminBase";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   return (
@@ -17,33 +17,33 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
 function Nav() {
   const { user, signOut } = useSession();
-  const pathname = usePathname();
+  const href = useAdminHref();
+  const sub = useAdminSubpath();
   const links =
     user.role === "admin"
       ? [
-          { href: "/admin", label: "Orders" },
-          { href: "/admin/events", label: "Events" },
-          { href: "/admin/scan", label: "Scan tickets" },
-          { href: "/admin/users", label: "Team" },
+          { sub: "", label: "Orders" },
+          { sub: "/events", label: "Events" },
+          { sub: "/scan", label: "Scan tickets" },
+          { sub: "/users", label: "Team" },
         ]
-      : [{ href: "/admin/scan", label: "Scan tickets" }];
+      : [{ sub: "/scan", label: "Scan tickets" }];
 
-  const isActive = (href: string) =>
-    href === "/admin" ? pathname === "/admin" || pathname.startsWith("/admin/orders") : pathname.startsWith(href);
+  const isActive = (s: string) => (s === "" ? sub === "" || sub.startsWith("/orders") : sub.startsWith(s));
 
   return (
     <header className="bg-ink text-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-        <Link href="/admin" className="font-display text-lg font-extrabold">
+        <Link href={href()} className="font-display text-lg font-extrabold">
           {SITE_NAME} admin
         </Link>
         <nav className="order-last flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto">
           {links.map((l) => (
             <Link
-              key={l.href}
-              href={l.href}
+              key={l.sub}
+              href={href(l.sub)}
               className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold ${
-                isActive(l.href) ? "bg-white text-ink" : "text-white/80 hover:text-white"
+                isActive(l.sub) ? "bg-white text-ink" : "text-white/80 hover:text-white"
               }`}
             >
               {l.label}
@@ -64,10 +64,11 @@ function Nav() {
 /** Renders children only for admins; staff see a short note instead. */
 export function AdminOnly({ children }: { children: ReactNode }) {
   const { user } = useSession();
+  const href = useAdminHref();
   if (user.role !== "admin") {
     return (
       <p className="text-ink-soft">
-        This page is for admins. <Link href="/admin/scan" className="font-semibold text-accent">Go to the scanner</Link>.
+        This page is for admins. <Link href={href("/scan")} className="font-semibold text-accent">Go to the scanner</Link>.
       </p>
     );
   }

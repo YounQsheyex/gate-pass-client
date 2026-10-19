@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminHref } from "./AdminBase";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, errorMessage } from "@/lib/api";
@@ -19,6 +20,7 @@ const FILTERS: { value: OrderStatus | ""; label: string }[] = [
 ];
 
 export function OrdersList() {
+  const href = useAdminHref();
   const [status, setStatus] = useState<OrderStatus | "">("pending");
   const [q, setQ] = useState("");
   const [query, setQuery] = useState("");
@@ -121,7 +123,7 @@ export function OrdersList() {
               {data.orders.map((o) => (
                 <tr key={o.id} className="hover:bg-lilac/50">
                   <td className="px-4 py-3">
-                    <Link href={`/admin/orders/${o.id}`} className="font-semibold text-accent hover:underline">
+                    <Link href={href(`/orders/${o.id}`)} className="font-semibold text-accent hover:underline">
                       {o.reference}
                     </Link>
                   </td>

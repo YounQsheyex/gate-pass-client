@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminHref } from "./AdminBase";
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -93,6 +94,7 @@ function toKobo(naira: string): number | null {
 }
 
 export function EventForm({ eventId }: { eventId?: string }) {
+  const href = useAdminHref();
   const router = useRouter();
   const [form, setForm] = useState<FormState | null>(eventId ? null : empty);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +168,7 @@ export function EventForm({ eventId }: { eventId?: string }) {
         setSaved(true);
       } else {
         const { event } = await post<{ event: AdminEvent }>("/api/admin/events", body);
-        router.replace(`/admin/events/${event.id}`);
+        router.replace(href(`/events/${event.id}`));
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -178,7 +180,7 @@ export function EventForm({ eventId }: { eventId?: string }) {
   return (
     <form onSubmit={submit} className="flex max-w-3xl flex-col gap-8">
       <div>
-        <Link href="/admin/events" className="text-sm font-semibold text-accent hover:underline">
+        <Link href={href("/events")} className="text-sm font-semibold text-accent hover:underline">
           All events
         </Link>
         <h1 className="mt-2 font-display text-4xl font-extrabold">{eventId ? form.title || "Edit event" : "New event"}</h1>

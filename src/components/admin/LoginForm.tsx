@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { errorMessage, post } from "@/lib/api";
 import type { SessionUser } from "@/lib/types";
 import { Alert, Button, Field, Input } from "@/components/ui";
+import { useAdminBase } from "./AdminBase";
 
 export function LoginForm() {
   const router = useRouter();
+  const base = useAdminBase();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +23,9 @@ export function LoginForm() {
       const { user } = await post<{ user: SessionUser }>("/api/auth/login", { email, password });
       // Read ?next= directly so this component doesn't need a Suspense boundary.
       const next = new URLSearchParams(window.location.search).get("next");
-      const safeNext = next && next.startsWith("/admin") && !next.startsWith("/admin/login") ? next : null;
-      router.replace(safeNext ?? (user.role === "admin" ? "/admin" : "/admin/scan"));
+      const inAdmin = next === base || next?.startsWith(`${base}/`);
+      const safeNext = next && inAdmin && !next.startsWith(`${base}/login`) ? next : null;
+      router.replace(safeNext ?? (user.role === "admin" ? base : `${base}/scan`));
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);

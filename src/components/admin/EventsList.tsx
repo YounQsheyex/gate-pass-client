@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminHref } from "./AdminBase";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, errorMessage } from "@/lib/api";
@@ -9,6 +10,7 @@ import { Alert, buttonClass } from "@/components/ui";
 import { StatusBadge } from "./StatusBadge";
 
 export function EventsList() {
+  const href = useAdminHref();
   const [events, setEvents] = useState<AdminEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +24,7 @@ export function EventsList() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-4xl font-extrabold">Events</h1>
-        <Link href="/admin/events/new" className={buttonClass("primary")}>
+        <Link href={href("/events/new")} className={buttonClass("primary")}>
           New event
         </Link>
       </div>
@@ -40,7 +42,7 @@ export function EventsList() {
           return (
             <li key={e.id}>
               <Link
-                href={`/admin/events/${e.id}`}
+                href={href(`/events/${e.id}`)}
                 className="flex flex-col gap-3 rounded-2xl border border-line p-5 hover:border-ink sm:flex-row sm:items-center"
               >
                 <div className="min-w-0 flex-1">
