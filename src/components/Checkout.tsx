@@ -63,8 +63,10 @@ export function Checkout({ event }: { event: PublicEventDetail }) {
                 {t.description && <p className="text-sm text-muted">{t.description}</p>}
                 {t.available === 0 ? (
                   <p className="text-sm font-semibold text-bad">Sold out</p>
-                ) : t.available <= 10 ? (
-                  <p className="text-sm font-semibold text-warn">{t.available} left</p>
+                ) : event.showTicketsLeft ? (
+                  <p className={`text-sm font-semibold ${t.available <= 10 ? "text-warn" : "text-ok"}`}>
+                    {t.available} {t.available === 1 ? "ticket" : "tickets"} left
+                  </p>
                 ) : null}
               </div>
               {t.available > 0 && (

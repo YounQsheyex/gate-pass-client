@@ -150,7 +150,8 @@ export function OrderDetail() {
                 {order.tickets.map((t) => (
                   <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                     <span>
-                      <span className="font-semibold">#{t.shortId}</span> {t.ticketTypeName}
+                      {t.ticketTypeName} <span className="text-sm text-muted">· entry code</span>{" "}
+                      <span className="font-mono font-semibold">{t.entryCode}</span>
                     </span>
                     <span className="flex items-center gap-2 text-sm text-muted">
                       {t.checkedInAt && dateTime(t.checkedInAt)}

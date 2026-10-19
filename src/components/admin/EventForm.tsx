@@ -4,7 +4,7 @@ import { useAdminHref } from "./AdminBase";
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, errorMessage, patch, post } from "@/lib/api";
+import { api, del, errorMessage, patch, post } from "@/lib/api";
 import { fromLagosInput, naira, toLagosInput } from "@/lib/format";
 import type { AdminEvent } from "@/lib/types";
 import { Alert, Button, Field, Input, Select, Textarea } from "@/components/ui";
@@ -20,6 +20,7 @@ type TicketRow = {
   quantity: string;
   maxPerOrder: string;
   sold: number;
+  soldOut: boolean;
 };
 
 type FormState = {
@@ -33,6 +34,10 @@ type FormState = {
   coverImageUrl: string;
   description: string;
   status: AdminEvent["status"];
+  soldOut: boolean;
+  showTicketsLeft: boolean;
+  featured: boolean;
+  isMain: boolean;
   ticketTypes: TicketRow[];
 };
 
@@ -45,6 +50,7 @@ const newRow = (): TicketRow => ({
   quantity: "",
   maxPerOrder: "10",
   sold: 0,
+  soldOut: false,
 });
 
 const empty: FormState = {
@@ -58,6 +64,10 @@ const empty: FormState = {
   coverImageUrl: "",
   description: "",
   status: "draft",
+  soldOut: false,
+  showTicketsLeft: true,
+  featured: true,
+  isMain: false,
   ticketTypes: [{ ...newRow(), name: "Regular" }],
 };
 
@@ -73,6 +83,10 @@ function fromEvent(e: AdminEvent): FormState {
     coverImageUrl: e.coverImageUrl,
     description: e.description,
     status: e.status,
+    soldOut: e.soldOut,
+    showTicketsLeft: e.showTicketsLeft,
+    featured: e.featured,
+    isMain: e.isMain,
     ticketTypes: e.ticketTypes.map((t) => ({
       key: t.id,
       id: t.id,
@@ -82,6 +96,7 @@ function fromEvent(e: AdminEvent): FormState {
       quantity: String(t.quantity),
       maxPerOrder: String(t.maxPerOrder),
       sold: t.sold,
+      soldOut: t.soldOut,
     })),
   };
 }
@@ -142,7 +157,7 @@ export function EventForm({ eventId }: { eventId?: string }) {
       if (!Number.isInteger(quantity) || quantity < 0) return setError(`Enter how many “${r.name}” tickets are available.`);
       if (quantity < r.sold) return setError(`“${r.name}” already has ${r.sold} sold or held, so quantity can’t be lower.`);
       if (!Number.isInteger(maxPerOrder) || maxPerOrder < 1) return setError(`Set a per-order limit of at least 1 for “${r.name}”.`);
-      ticketTypes.push({ id: r.id, name: r.name.trim(), description: r.description.trim(), price, quantity, maxPerOrder });
+      ticketTypes.push({ id: r.id, name: r.name.trim(), description: r.description.trim(), price, quantity, maxPerOrder, soldOut: r.soldOut });
     }
 
     const body = {
@@ -156,6 +171,10 @@ export function EventForm({ eventId }: { eventId?: string }) {
       coverImageUrl: form.coverImageUrl.trim(),
       description: form.description,
       status: form.status,
+      soldOut: form.soldOut,
+      showTicketsLeft: form.showTicketsLeft,
+      featured: form.featured,
+      isMain: form.isMain,
       ticketTypes,
     };
 
@@ -251,6 +270,73 @@ export function EventForm({ eventId }: { eventId?: string }) {
         </Field>
       </section>
 
+      <section className="flex flex-col gap-3 rounded-2xl bg-lilac p-4">
+        <h2 className="font-display text-xl font-bold">Home page</h2>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.isMain}
+            onChange={(e) => setForm({ ...form, isMain: e.target.checked, featured: e.target.checked ? true : form.featured })}
+            className="mt-1 h-5 w-5 accent-[var(--color-accent)]"
+          />
+          <span>
+            <span className="font-semibold">Make this the main event</span>
+            <span className="block text-sm text-ink-soft">
+              Shown big at the top of the home page, with the other events underneath. Only one event can be main; choosing this one
+              replaces the current main event.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.featured}
+            onChange={(e) => setForm({ ...form, featured: e.target.checked, isMain: e.target.checked ? form.isMain : false })}
+            className="mt-1 h-5 w-5 accent-[var(--color-accent)]"
+          />
+          <span>
+            <span className="font-semibold">Show on the home page</span>
+            <span className="block text-sm text-ink-soft">
+              Untick to keep it off the home page until you tick it again. Its own page still works for anyone with the link, so you
+              can sell to a private list.
+            </span>
+          </span>
+        </label>
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-2xl bg-lilac p-4">
+        <h2 className="font-display text-xl font-bold">Sales</h2>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.soldOut}
+            onChange={(e) => set("soldOut", e.target.checked)}
+            className="mt-1 h-5 w-5 accent-[var(--color-accent)]"
+          />
+          <span>
+            <span className="font-semibold">Mark the whole event as sold out</span>
+            <span className="block text-sm text-ink-soft">
+              The event stays on the site with a “Sold out” label and nobody can order, even if tickets are left. Orders already
+              waiting for payment can still be confirmed.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.showTicketsLeft}
+            onChange={(e) => set("showTicketsLeft", e.target.checked)}
+            className="mt-1 h-5 w-5 accent-[var(--color-accent)]"
+          />
+          <span>
+            <span className="font-semibold">Show how many tickets are left</span>
+            <span className="block text-sm text-ink-soft">
+              Buyers see “12 left” under each ticket type (e.g. VIP, Regular). Turn off to hide the numbers; “Sold out” still shows.
+            </span>
+          </span>
+        </label>
+      </section>
+
       <section className="flex flex-col gap-4">
         <h2 className="font-display text-2xl font-bold">Ticket types</h2>
         {form.ticketTypes.map((r) => (
@@ -262,12 +348,21 @@ export function EventForm({ eventId }: { eventId?: string }) {
             <Field label="Price (₦)">
               <Input required inputMode="decimal" value={r.price} onChange={(e) => setRow(r.key, { price: e.target.value })} placeholder="5000" />
             </Field>
-            <Field label="Available" hint={r.sold ? `${r.sold} sold or held` : undefined}>
+            <Field label="Total tickets" hint={r.id ? ticketsLeftHint(r) : undefined}>
               <Input required inputMode="numeric" value={r.quantity} onChange={(e) => setRow(r.key, { quantity: e.target.value })} />
             </Field>
             <Field label="Max per order">
               <Input required inputMode="numeric" value={r.maxPerOrder} onChange={(e) => setRow(r.key, { maxPerOrder: e.target.value })} />
             </Field>
+            <label className="flex items-center gap-2 sm:col-span-4">
+              <input
+                type="checkbox"
+                checked={r.soldOut}
+                onChange={(e) => setRow(r.key, { soldOut: e.target.checked })}
+                className="h-5 w-5 accent-[var(--color-accent)]"
+              />
+              <span className="text-sm font-semibold">Mark “{r.name || "this type"}” as sold out</span>
+            </label>
             <div className="sm:col-span-3">
               <Field label="Short description (optional)">
                 <Input value={r.description} onChange={(e) => setRow(r.key, { description: e.target.value })} placeholder="Includes a drink" />
@@ -304,6 +399,62 @@ export function EventForm({ eventId }: { eventId?: string }) {
           {busy ? "Saving…" : eventId ? "Save changes" : "Create event"}
         </Button>
       </div>
+
+      {eventId && <DeleteEvent eventId={eventId} title={form.title} onDeleted={() => router.replace(href("/events"))} />}
     </form>
+  );
+}
+
+function ticketsLeftHint(r: TicketRow) {
+  const total = Number(r.quantity);
+  const left = Number.isInteger(total) ? Math.max(0, total - r.sold) : null;
+  if (r.soldOut) return `Marked sold out (${r.sold} sold or held)`;
+  return left === null ? `${r.sold} sold or held` : `${left} left · ${r.sold} sold or held`;
+}
+
+/** Permanent delete, behind a second confirmation. The API refuses if anyone has paid or is paying. */
+function DeleteEvent({ eventId, title, onDeleted }: { eventId: string; title: string; onDeleted: () => void }) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      await del(`/api/admin/events/${eventId}`);
+      onDeleted();
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-bad/30 p-4">
+      <h2 className="font-display text-xl font-bold text-bad">Delete event</h2>
+      <p className="text-sm text-ink-soft">
+        Removes the event and its ticket types for good. Only possible before anyone has paid. To take an event with sales off the
+        site, set its status to Cancelled instead.
+      </p>
+      {!asking ? (
+        <Button type="button" variant="danger" className="self-start" onClick={() => setAsking(true)}>
+          Delete this event
+        </Button>
+      ) : (
+        <div className="flex flex-col gap-3 rounded-xl bg-bad/5 p-3">
+          <p className="font-semibold">Delete “{title}” permanently? This can&rsquo;t be undone.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="danger" disabled={busy} onClick={remove} className="border-bad bg-bad text-white hover:bg-bad/90">
+              {busy ? "Deleting…" : "Yes, delete it"}
+            </Button>
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => setAsking(false)}>
+              Keep it
+            </Button>
+          </div>
+        </div>
+      )}
+      {error && <Alert>{error}</Alert>}
+    </section>
   );
 }

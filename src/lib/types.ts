@@ -10,6 +10,10 @@ export type PublicEvent = PublicVenue & {
   coverImageUrl: string | null;
   minPrice: number | null;
   soldOut: boolean;
+  /** Whether the organiser wants "N left" shown. */
+  showTicketsLeft: boolean;
+  /** Pinned to the top of the home page by the organiser. */
+  isMain: boolean;
   ticketsLeft: number;
   capacity: number;
 };
@@ -55,6 +59,7 @@ export type AdminTicketType = {
   quantity: number;
   sold?: number;
   maxPerOrder: number;
+  soldOut: boolean;
 };
 
 export type AdminEvent = {
@@ -69,7 +74,13 @@ export type AdminEvent = {
   endsAt: string | null;
   coverImageUrl: string;
   status: "draft" | "published" | "cancelled";
-  ticketTypes: (AdminTicketType & { id: string; sold: number })[];
+  soldOut: boolean;
+  showTicketsLeft: boolean;
+  /** Listed on the home page. */
+  featured: boolean;
+  /** The big event at the top of the home page. */
+  isMain: boolean;
+  ticketTypes: (AdminTicketType & { id: string; sold: number; left: number })[];
   stats?: { paidTickets: number; pendingTickets: number; revenue: number; checkedIn: number };
 };
 
@@ -96,7 +107,7 @@ export type AdminOrderDetail = AdminOrder & {
   confirmedByName: string | null;
   cancelledByName: string | null;
   whatsappChatUrl: string;
-  tickets: { id: string; shortId: string; ticketTypeName: string; status: "valid" | "used" | "void"; checkedInAt: string | null }[];
+  tickets: { id: string; shortId: string; entryCode: string; ticketTypeName: string; status: "valid" | "used" | "void"; checkedInAt: string | null }[];
 };
 
 export type CheckinResult = {
@@ -109,4 +120,6 @@ export type CheckinResult = {
     orderReference?: string;
     checkedInAt?: string | null;
   };
+  /** For "wrong_event": the event this ticket is actually for. */
+  ticketEvent?: { id: string; title: string };
 };

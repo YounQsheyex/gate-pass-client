@@ -4,7 +4,7 @@ import type { PublicEvent } from "@/lib/types";
 import { Poster } from "../Poster";
 import { Countdown } from "./Countdown";
 
-/** The night's headliner: the soonest event, staged like a gig poster with a live countdown. */
+/** The headliner: the organiser's main event (or the soonest), staged like a gig poster with a live countdown. */
 export function Hero({ event }: { event: PublicEvent }) {
   const d = stubDate(event.startsAt);
   const href = `/events/${event.slug}`;
@@ -13,7 +13,7 @@ export function Hero({ event }: { event: PublicEvent }) {
       <div className="stage-lights -z-10" aria-hidden="true" />
       <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 pt-8 pb-16 sm:px-6 md:grid-cols-[1.1fr_0.9fr] md:gap-14 md:pt-14 md:pb-24">
         <div>
-          <p className="font-semibold text-stub">Next up</p>
+          <p className="font-semibold text-stub">{event.isMain ? "Don’t miss" : "Next up"}</p>
           <h1 className="mt-3 font-display text-[clamp(2.75rem,8vw,6.5rem)] font-extrabold leading-[0.88] tracking-tight text-balance">
             {event.title}
           </h1>
@@ -46,7 +46,7 @@ export function Hero({ event }: { event: PublicEvent }) {
               Event details
             </Link>
           </div>
-          {!event.soldOut && event.capacity > 0 && event.ticketsLeft <= Math.max(10, event.capacity * 0.15) && (
+          {event.showTicketsLeft && !event.soldOut && event.capacity > 0 && event.ticketsLeft <= Math.max(10, event.capacity * 0.15) && (
             <p className="mt-4 font-semibold text-stub">Only {event.ticketsLeft} tickets left</p>
           )}
         </div>

@@ -33,8 +33,8 @@ async function Home() {
     return <EmptyStage title="The next show is being booked" body="No events are on sale yet. Check back soon." />;
   }
 
-  // Headline the soonest event that still has tickets; fall back to the soonest overall.
-  const headliner = events.find((e) => !e.soldOut) ?? events[0]!;
+  // The event the organiser made main; otherwise the soonest one that still has tickets.
+  const headliner = events.find((e) => e.isMain) ?? events.find((e) => !e.soldOut) ?? events[0]!;
   const rest = events.filter((e) => e.id !== headliner.id);
 
   return (
