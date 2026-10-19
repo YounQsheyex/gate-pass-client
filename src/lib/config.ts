@@ -1,4 +1,4 @@
-export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "Gatepass";
+export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "The Chill Circle";
 
 /**
  * Where the backend lives. Only the Next.js server uses this: browsers call this site's
