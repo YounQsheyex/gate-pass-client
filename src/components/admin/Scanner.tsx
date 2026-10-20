@@ -36,6 +36,7 @@ export function Scanner() {
   const [manualBusy, setManualBusy] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
   const scannerRef = useRef<QrScannerType | null>(null);
   const busyRef = useRef(false);
   const lastRef = useRef<{ code: string; at: number } | null>(null);
@@ -103,8 +104,14 @@ export function Scanner() {
 
   async function startCamera() {
     if (!videoRef.current) return;
-    setCamera("starting");
     setCameraError(null);
+    const blocker = cameraBlocker();
+    if (blocker) {
+      setCamera("error");
+      setCameraError(blocker);
+      return;
+    }
+    setCamera("starting");
     try {
       const { default: QrScanner } = await import("qr-scanner");
       scannerRef.current?.destroy();
@@ -115,15 +122,31 @@ export function Scanner() {
         returnDetailedScanResult: true,
       });
       scannerRef.current = scanner;
-      await scanner.start();
+      // Some phones never answer the permission request; don't spin forever.
+      await Promise.race([
+        scanner.start(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 15_000)),
+      ]);
       setCamera("on");
     } catch (err) {
+      scannerRef.current?.destroy();
+      scannerRef.current = null;
       setCamera("error");
-      setCameraError(
-        String(err).includes("NotAllowed") || String(err).includes("Permission")
-          ? "Camera access was blocked. Allow camera access for this site in your browser settings, then try again."
-          : "Couldn’t start the camera. The scanner needs HTTPS (or localhost) and a device with a camera.",
-      );
+      setCameraError(cameraErrorMessage(await realCameraError(err)));
+    }
+  }
+
+  /** Backup for when the live camera won't start: take or pick a photo of the QR code. */
+  async function scanPhoto(file: File) {
+    try {
+      const { default: QrScanner } = await import("qr-scanner");
+      const res = await QrScanner.scanImage(file, { returnDetailedScanResult: true });
+      lastRef.current = null;
+      await check(res.data);
+    } catch {
+      setShown({ error: "Couldn’t find a QR code in that photo. Take it closer, flat and in focus, or type the entry code below.", at: Date.now() });
+    } finally {
+      if (photoRef.current) photoRef.current.value = "";
     }
   }
 
@@ -209,10 +232,13 @@ export function Scanner() {
         </Field>
       )}
 
-      <div className="relative overflow-hidden rounded-2xl bg-ink">
-        <video ref={videoRef} className={`aspect-square w-full object-cover ${camera === "on" ? "" : "invisible"}`} muted playsInline />
+      {/* Fixed size, so the box (and any camera message) never collapses when the camera fails to start. */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-ink">
+        {/* Never hide the video itself: the scanning library treats a hidden video as "keep hidden" and the
+            camera picture would never appear. The panel below covers it instead until the camera is on. */}
+        <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" muted playsInline />
         {camera !== "on" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center text-white">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-ink p-6 text-center text-white">
             <p className="max-w-xs text-white/80">
               {camera === "error" ? cameraError : "Point the camera at the QR code on the guest’s ticket."}
             </p>
@@ -227,6 +253,25 @@ export function Scanner() {
           Stop camera
         </Button>
       )}
+
+      <input
+        ref={photoRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        id="scan-photo"
+        onChange={(e) => e.target.files?.[0] && void scanPhoto(e.target.files[0])}
+      />
+      <Button
+        type="button"
+        variant={camera === "error" ? "secondary" : "ghost"}
+        className="self-center"
+        disabled={!eventId}
+        onClick={() => photoRef.current?.click()}
+      >
+        Scan from a photo instead
+      </Button>
 
       <ResultPanel shown={shown} onSwitch={switchAndRecheck} />
 
@@ -265,6 +310,61 @@ export function Scanner() {
       </form>
     </div>
   );
+}
+
+/** Why the live camera can't work in this browser at all, before even asking (null if it might). */
+function cameraBlocker(): string | null {
+  if (typeof window === "undefined") return null;
+  const ua = navigator.userAgent;
+  const inApp = /FBAN|FBAV|Instagram|WhatsApp|Line\/|Snapchat|TikTok|musical_ly|Twitter|LinkedInApp|GSA\//i.test(ua);
+  if (!window.isSecureContext) {
+    return `The camera only works on the secure address. Open https://${location.host}${location.pathname} (with https), not http.`;
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return inApp
+      ? "This app’s built-in browser doesn’t allow the camera. Tap ⋯ or the share icon and choose “Open in Chrome” or “Open in Safari”, then scan there. Or use “Scan from a photo instead” below."
+      : "This browser doesn’t allow the camera. Open this page in Chrome (Android) or Safari (iPhone), or use “Scan from a photo instead” below.";
+  }
+  return null;
+}
+
+/**
+ * The scanning library reports every failure as "Camera not found", including a blocked
+ * permission. Ask the browser directly to learn the real reason.
+ */
+async function realCameraError(err: unknown): Promise<unknown> {
+  if (!/Camera not found/i.test(String(err))) return err;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    stream.getTracks().forEach((t) => t.stop());
+    return err;
+  } catch (real) {
+    return real;
+  }
+}
+
+function cameraErrorMessage(err: unknown): string {
+  const name = err instanceof Error || err instanceof DOMException ? err.name : "";
+  const text = String(err);
+  const iPhone = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (name === "NotAllowedError" || name === "SecurityError" || /NotAllowed|Permission|denied/i.test(text)) {
+    return iPhone
+      ? "Camera access is blocked for this site. In Safari, tap “aA” in the address bar → Website Settings → Camera → Allow, then tap Start camera again. (Also check Settings → Safari → Camera.)"
+      : "Camera access is blocked for this site. Tap the lock or settings icon next to the address → Permissions → Camera → Allow, then reload and tap Start camera again.";
+  }
+  if (name === "NotFoundError" || name === "OverconstrainedError" || /Camera not found/i.test(text)) {
+    return "No camera was found on this device. Use a phone, or type the entry code below.";
+  }
+  if (name === "NotReadableError" || name === "AbortError" || /could not start|in use/i.test(text)) {
+    return "The camera is being used by another app (a video call or the camera app). Close it, then tap Start camera again.";
+  }
+  if (/Timeout/.test(text)) {
+    return "The camera didn’t respond. If your phone asked for permission, tap Allow; otherwise reload the page and try again, or use “Scan from a photo instead”.";
+  }
+  if (/https/i.test(text)) {
+    return `The camera only works on the secure address. Open https://${location.host}${location.pathname} instead.`;
+  }
+  return `Couldn’t start the camera (${name || text}). Reload and try again, or use “Scan from a photo instead”.`;
 }
 
 /** Ended this long ago counts as over (late finishes and after-parties still count as tonight). */
