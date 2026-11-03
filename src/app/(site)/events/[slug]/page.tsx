@@ -41,9 +41,9 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
             {event.venueHidden ? (
               <>
                 {event.venueHint ? `Secret location in ${event.venueHint}` : "Secret location"}
-                <span className="mt-1 block text-base font-normal text-ink-soft">
+                {/* <span className="mt-1 block text-base font-normal text-ink-soft">
                   The exact address is printed on your ticket, which we email once your payment is confirmed.
-                </span>
+                </span> */}
               </>
             ) : (
               event.venue
